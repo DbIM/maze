@@ -1,10 +1,12 @@
-// Three.js рендерер для 3D вида
+// Three.js рендерер с поддержкой спрайтов
 const ThreeJSRenderer = (function() {
     let scene, camera, renderer, sky;
     let initialized = false;
-    let entityMeshes = new Map();
+    let entitySprites = new Map();
     let wallMeshes = [];
     let floorMesh, ceilingMesh;
+    let textureLoader;
+    let spriteTextures = {};
     
     // Цвета
     const COLORS = {
@@ -12,11 +14,17 @@ const ThreeJSRenderer = (function() {
         WALL: 0xF5F5DC,
         WALL_DARK: 0xE0D8C0,
         FLOOR: 0x4A4A4A,
-        FLOOR_LIGHT: 0x5A5A5A,
-        TREE: 0x2E8B57,
-        NPC: 0x4682B4,
-        ENEMY: 0x8B0000,
-        GRASS: 0x7CFC00
+        FLOOR_LIGHT: 0x5A5A5A
+    };
+    
+    // Пути к спрайтам (относительные от index.html)
+    const SPRITE_PATHS = {
+        ENEMY: 'assets/sprites/enemy.png',
+        ENEMY2: 'assets/sprites/enemy2.png',
+        NPC: 'assets/sprites/npc.png',
+        NPC2: 'assets/sprites/npc2.png',
+        TREE: 'assets/sprites/tree.png',
+        DEFAULT: 'assets/sprites/default.png' // Запасной спрайт
     };
     
     function init() {
@@ -40,13 +48,19 @@ const ThreeJSRenderer = (function() {
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         container.appendChild(renderer.domElement);
         
+        // Создаем загрузчик текстур
+        textureLoader = new THREE.TextureLoader();
+        
+        // Загружаем спрайты
+        loadSprites();
+        
         // Создаем небо
         createSky();
         
         // Добавляем освещение
         setupLighting();
         
-        // Создаем пол и потолок (они постоянные)
+        // Создаем пол и потолок
         createFloorAndCeiling();
         
         // Обновляем вид
@@ -62,8 +76,88 @@ const ThreeJSRenderer = (function() {
         animate();
     }
     
+    function loadSprites() {
+        // Загружаем все спрайты
+        Object.keys(SPRITE_PATHS).forEach(key => {
+            textureLoader.load(
+                SPRITE_PATHS[key],
+                // Успешная загрузка
+                (texture) => {
+                    spriteTextures[key] = texture;
+                    console.log(`Спрайт ${key} загружен`);
+                    
+                    // Если это первый загруженный спрайт, обновляем вид
+                    if (Object.keys(spriteTextures).length === 1) {
+                        updateView();
+                    }
+                },
+                // Прогресс загрузки
+                (xhr) => {
+                    console.log(`${key}: ${(xhr.loaded / xhr.total * 100)}% загружено`);
+                },
+                // Ошибка загрузки
+                (error) => {
+                    console.error(`Ошибка загрузки спрайта ${key}:`, error);
+                    // Создаем простой спрайт вместо отсутствующего
+                    createFallbackSprite(key);
+                }
+            );
+        });
+    }
+    
+    function createFallbackSprite(spriteType) {
+        // Создаем простой цветной спрайт для замены
+        const canvas = document.createElement('canvas');
+        canvas.width = 64;
+        canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+        
+        // Разные цвета для разных типов сущностей
+        let color;
+        switch(spriteType) {
+            case 'ENEMY':
+            case 'ENEMY2':
+                color = '#FF0000'; // Красный для врагов
+                break;
+            case 'NPC':
+            case 'NPC2':
+                color = '#00FF00'; // Зеленый для NPC
+                break;
+            case 'TREE':
+                color = '#008800'; // Темно-зеленый для деревьев
+                break;
+            default:
+                color = '#888888'; // Серый по умолчанию
+        }
+        
+        // Рисуем круг с тенью
+        ctx.fillStyle = color;
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+        ctx.shadowBlur = 5;
+        ctx.beginPath();
+        ctx.arc(32, 32, 28, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Добавляем букву для идентификации
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 24px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        let letter = '?';
+        switch(spriteType) {
+            case 'ENEMY': letter = 'E'; break;
+            case 'NPC': letter = 'N'; break;
+            case 'TREE': letter = 'T'; break;
+        }
+        
+        ctx.fillText(letter, 32, 32);
+        
+        spriteTextures[spriteType] = new THREE.CanvasTexture(canvas);
+    }
+    
     function createSky() {
-        // Создаем небо как большой купол
         const skyGeometry = new THREE.SphereGeometry(100, 32, 32);
         const skyTexture = createSkyTexture();
         const skyMaterial = new THREE.MeshBasicMaterial({ 
@@ -113,15 +207,6 @@ const ThreeJSRenderer = (function() {
         
         const directionalLight = new THREE.DirectionalLight(0xFFFFFF, 0.8);
         directionalLight.position.set(10, 20, 10);
-        directionalLight.castShadow = true;
-        directionalLight.shadow.mapSize.width = 2048;
-        directionalLight.shadow.mapSize.height = 2048;
-        directionalLight.shadow.camera.near = 0.5;
-        directionalLight.shadow.camera.far = 50;
-        directionalLight.shadow.camera.left = -20;
-        directionalLight.shadow.camera.right = 20;
-        directionalLight.shadow.camera.top = 20;
-        directionalLight.shadow.camera.bottom = -20;
         scene.add(directionalLight);
         
         const fillLight = new THREE.DirectionalLight(0xFFFFFF, 0.3);
@@ -149,7 +234,7 @@ const ThreeJSRenderer = (function() {
         // Создаем потолок
         const ceilingGeometry = new THREE.PlaneGeometry(cellSize * 20, cellSize * 20);
         const ceilingMaterial = new THREE.MeshLambertMaterial({ 
-            color: 0xE8F4F8 // Светлый голубоватый
+            color: 0xE8F4F8
         });
         ceilingMesh = new THREE.Mesh(ceilingGeometry, ceilingMaterial);
         ceilingMesh.rotation.x = -Math.PI / 2;
@@ -248,22 +333,20 @@ const ThreeJSRenderer = (function() {
     function animate() {
         requestAnimationFrame(animate);
         
-        // Анимация сущностей
-        entityMeshes.forEach((mesh, key) => {
-            if (!mesh.parent) return; // Если меш был удален
+        // Анимация спрайтов (поворот к камере)
+        entitySprites.forEach((sprite, key) => {
+            if (!sprite.parent) return;
             
-            if (mesh.userData.type === 'tree') {
-                mesh.rotation.y += 0.005;
-                if (mesh.userData.trunk) {
-                    mesh.userData.trunk.position.y = Math.sin(Date.now() * 0.001 + mesh.userData.offset) * 0.05;
-                }
-            } else if (mesh.userData.type === 'npc') {
-                mesh.position.y = 0.75 + Math.sin(Date.now() * 0.002) * 0.05;
-                mesh.rotation.y += 0.01;
-            } else if (mesh.userData.type === 'enemy') {
+            // Всегда поворачиваем спрайт к камере (billboard effect)
+            sprite.lookAt(camera.position);
+            
+            // Легкая пульсация для некоторых типов
+            if (sprite.userData.type === 'enemy') {
                 const scale = 1 + Math.sin(Date.now() * 0.003) * 0.1;
-                mesh.scale.set(scale, scale, scale);
-                mesh.position.y = 0.4 + Math.sin(Date.now() * 0.005) * 0.1;
+                sprite.scale.set(scale, scale, 1);
+            } else if (sprite.userData.type === 'npc') {
+                // Легкое покачивание для NPC
+                sprite.position.y = 0.8 + Math.sin(Date.now() * 0.002) * 0.05;
             }
         });
         
@@ -273,7 +356,7 @@ const ThreeJSRenderer = (function() {
     function updateView() {
         if (!initialized) return;
         
-        // Очищаем старые стены и сущности
+        // Очищаем старые стены и спрайты
         clearOldMeshes();
         
         const state = Game.getLevel().getState();
@@ -284,8 +367,8 @@ const ThreeJSRenderer = (function() {
         // Создаем стены в видимой области
         createWalls(state);
         
-        // Добавляем сущности в видимой области
-        createEntities(state);
+        // Добавляем спрайты сущностей в видимой области
+        createEntitySprites(state);
     }
     
     function clearOldMeshes() {
@@ -297,21 +380,36 @@ const ThreeJSRenderer = (function() {
         });
         wallMeshes = [];
         
-        // Удаляем все старые сущности
-        entityMeshes.forEach((mesh, key) => {
-            if (mesh.parent) {
-                scene.remove(mesh);
+        // Удаляем только спрайты сущностей, которые больше не видны
+        const entities = Game.getLevel().getAllEntities();
+        const visibleEntities = new Set();
+        
+        // Собираем ключи видимых сущностей
+        entities.forEach(entity => {
+            const dx = entity.x - Game.getLevel().getPlayerX();
+            const dz = entity.y - Game.getLevel().getPlayerY();
+            const distance = Math.sqrt(dx*dx + dz*dz);
+            
+            if (distance <= 5) {
+                visibleEntities.add(`${entity.x},${entity.y}`);
             }
         });
-        entityMeshes.clear();
+        
+        // Удаляем спрайты невидимых сущностей
+        entitySprites.forEach((sprite, key) => {
+            if (!visibleEntities.has(key) && sprite.parent) {
+                scene.remove(sprite);
+                entitySprites.delete(key);
+            }
+        });
     }
     
     function updateCameraDirection(direction) {
         switch(direction) {
-            case 0: camera.rotation.y = 0; break;        // Север
-            case 1: camera.rotation.y = -Math.PI / 2; break; // Восток
-            case 2: camera.rotation.y = Math.PI; break;     // Юг
-            case 3: camera.rotation.y = Math.PI / 2; break; // Запад
+            case 0: camera.rotation.y = 0; break;
+            case 1: camera.rotation.y = -Math.PI / 2; break;
+            case 2: camera.rotation.y = Math.PI; break;
+            case 3: camera.rotation.y = Math.PI / 2; break;
         }
     }
     
@@ -320,19 +418,17 @@ const ThreeJSRenderer = (function() {
         const wallHeight = 4;
         const wallTexture = createWallTexture();
         
-        // Создаем стены только в видимой области
         const viewDistance = 4;
         for (let x = -viewDistance; x <= viewDistance; x++) {
             for (let z = -viewDistance; z <= viewDistance; z++) {
                 const worldX = state.playerX + x;
                 const worldZ = state.playerY + z;
                 
-                if (x === 0 && z === 0) continue; // Позиция игрока
+                if (x === 0 && z === 0) continue;
                 
                 if (Game.getLevel().isWall(worldX, worldZ) || 
                     Game.getLevel().isOutOfBounds(worldX, worldZ)) {
                     
-                    // Проверяем, видна ли стена с текущей позиции
                     if (isWallVisible(x, z, state.direction)) {
                         createWallAt(x, z, cellSize, wallHeight, wallTexture);
                     }
@@ -354,7 +450,6 @@ const ThreeJSRenderer = (function() {
         scene.add(wall);
         wallMeshes.push(wall);
         
-        // Добавляем верхнюю часть стены
         const capGeometry = new THREE.BoxGeometry(cellSize * 1.05, 0.2, cellSize * 1.05);
         const capMaterial = new THREE.MeshLambertMaterial({ 
             color: COLORS.WALL_DARK
@@ -371,141 +466,97 @@ const ThreeJSRenderer = (function() {
         if (distance > 4) return false;
         
         switch(direction) {
-            case 0: // Север
-                return z <= 1 && Math.abs(x) <= 2;
-            case 1: // Восток
-                return x >= -1 && Math.abs(z) <= 2;
-            case 2: // Юг
-                return z >= -1 && Math.abs(x) <= 2;
-            case 3: // Запад
-                return x <= 1 && Math.abs(z) <= 2;
+            case 0: return z <= 1 && Math.abs(x) <= 2;
+            case 1: return x >= -1 && Math.abs(z) <= 2;
+            case 2: return z >= -1 && Math.abs(x) <= 2;
+            case 3: return x <= 1 && Math.abs(z) <= 2;
         }
         return false;
     }
     
-    function createEntities(state) {
-        const entities = Game.getLevel().getAllEntities();
-        const cellSize = 3;
-        
-        entities.forEach(entity => {
-            // Проверяем, видна ли сущность с текущей позиции
-            const dx = entity.x - state.playerX;
-            const dz = entity.y - state.playerY;
-            const distance = Math.sqrt(dx*dx + dz*dz);
+        function createEntitySprites(state) {
+            const entities = Game.getLevel().getAllEntities();
+            const cellSize = 3;
             
-            if (distance > 5) return; // Слишком далеко
-            
-            // Создаем меш в зависимости от типа сущности
-            const mesh = createEntityMesh(entity, state);
-            if (mesh) {
-                // Позиционируем относительно игрока
-                mesh.position.set(
+            entities.forEach(entity => {
+                // Проверяем, видна ли сущность
+                const dx = entity.x - state.playerX;
+                const dz = entity.y - state.playerY;
+                const distance = Math.sqrt(dx*dx + dz*dz);
+                
+                if (distance > 5) return;
+                
+                // Если спрайт уже создан для этой сущности - обновляем позицию
+                if (entitySprites.has(`${entity.x},${entity.y}`)) {
+                    const existingSprite = entitySprites.get(`${entity.x},${entity.y}`);
+                    // Обновляем позицию относительно игрока
+                    existingSprite.position.set(
+                        (entity.x - state.playerX) * cellSize,
+                        existingSprite.userData.baseHeight || 1.0,
+                        (entity.y - state.playerY) * cellSize
+                    );
+                    return;
+                }
+                
+                // Используем сохраненный тип спрайта из данных сущности
+                const spriteKey = entity.sprite || 'DEFAULT';
+                
+                // Если спрайт еще не загружен, используем заглушку
+                const texture = spriteTextures[spriteKey] || spriteTextures.DEFAULT;
+                if (!texture) return;
+                
+                // Создаем материал для спрайта
+                const material = new THREE.SpriteMaterial({ 
+                    map: texture,
+                    transparent: true,
+                    opacity: 0.9
+                });
+                
+                // Создаем спрайт
+                const sprite = new THREE.Sprite(material);
+                
+                // Размер спрайта
+                let spriteSize = 1.5;
+                let baseHeight = 1.0;
+                if (entity.type === state.ENTITY_TYPES.TREE) {
+                    spriteSize = 2.0;
+                    baseHeight = 1.5;
+                } else if (entity.type === state.ENTITY_TYPES.ENEMY) {
+                    spriteSize = 1.3;
+                    baseHeight = 0.8;
+                } else if (entity.type === state.ENTITY_TYPES.NPC) {
+                    spriteSize = 1.4;
+                    baseHeight = 0.9;
+                }
+                
+                sprite.scale.set(spriteSize, spriteSize, 1);
+                
+                // Позиционируем
+                sprite.position.set(
                     (entity.x - state.playerX) * cellSize,
-                    0,
+                    baseHeight,
                     (entity.y - state.playerY) * cellSize
                 );
                 
-                mesh.userData = { 
+                sprite.userData = { 
                     type: entity.type, 
                     entity: entity,
-                    offset: Math.random() * Math.PI * 2
+                    spriteKey: spriteKey,
+                    baseHeight: baseHeight // Сохраняем базовую высоту для анимации
                 };
                 
-                mesh.castShadow = true;
-                scene.add(mesh);
-                entityMeshes.set(`${entity.x},${entity.y}`, mesh);
-            }
-        });
-    }
-    
-    function createEntityMesh(entity, state) {
-        switch(entity.type) {
-            case state.ENTITY_TYPES.TREE:
-                return createTreeMesh();
-            case state.ENTITY_TYPES.NPC:
-                return createNPCMesh();
-            case state.ENTITY_TYPES.ENEMY:
-                return createEnemyMesh();
-            default:
-                return null;
+                scene.add(sprite);
+                entitySprites.set(`${entity.x},${entity.y}`, sprite);
+            });
         }
-    }
-    
-    function createTreeMesh() {
-        const trunkGeometry = new THREE.CylinderGeometry(0.2, 0.3, 1.5, 8);
-        const trunkMaterial = new THREE.MeshLambertMaterial({ 
-            color: 0x8B4513
-        });
-        const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
-        
-        const leavesGeometry = new THREE.ConeGeometry(0.8, 2, 8);
-        const leavesMaterial = new THREE.MeshLambertMaterial({ 
-            color: COLORS.TREE
-        });
-        const leaves = new THREE.Mesh(leavesGeometry, leavesMaterial);
-        leaves.position.y = 1.2;
-        
-        const tree = new THREE.Group();
-        tree.add(trunk);
-        tree.add(leaves);
-        tree.userData.trunk = trunk;
-        
-        return tree;
-    }
-    
-    function createNPCMesh() {
-        const bodyGeometry = new THREE.CylinderGeometry(0.3, 0.3, 1.2, 8);
-        const bodyMaterial = new THREE.MeshLambertMaterial({ 
-            color: COLORS.NPC
-        });
-        const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-        
-        const headGeometry = new THREE.SphereGeometry(0.25, 8, 8);
-        const headMaterial = new THREE.MeshLambertMaterial({ 
-            color: 0xFFE4B5
-        });
-        const head = new THREE.Mesh(headGeometry, headMaterial);
-        head.position.y = 0.85;
-        
-        const npc = new THREE.Group();
-        npc.add(body);
-        npc.add(head);
-        
-        return npc;
-    }
-    
-    function createEnemyMesh() {
-        const enemyGeometry = new THREE.SphereGeometry(0.5, 10, 10);
-        const enemyMaterial = new THREE.MeshLambertMaterial({ 
-            color: COLORS.ENEMY,
-            emissive: 0x440000,
-            emissiveIntensity: 0.2
-        });
-        const enemy = new THREE.Mesh(enemyGeometry, enemyMaterial);
-        
-        // Добавляем шипы
-        const spikeGeometry = new THREE.ConeGeometry(0.1, 0.3, 4);
-        const spikeMaterial = new THREE.MeshLambertMaterial({ 
-            color: 0xFF0000
-        });
-        
-        for (let i = 0; i < 8; i++) {
-            const angle = (i / 8) * Math.PI * 2;
-            const spike = new THREE.Mesh(spikeGeometry, spikeMaterial);
-            spike.position.set(
-                Math.cos(angle) * 0.6,
-                0,
-                Math.sin(angle) * 0.6
-            );
-            spike.lookAt(0, 0, 0);
-            enemy.add(spike);
-        }
-        
-        return enemy;
-    }
     
     return {
         init,
-        updateView
+        updateView,
+        // Метод для перезагрузки спрайтов (если нужно менять на лету)
+        reloadSprites: function() {
+            spriteTextures = {};
+            loadSprites();
+        }
     };
 })();

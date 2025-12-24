@@ -107,54 +107,74 @@ const Level = (function() {
         mazeWalls.forEach(wall => gameState.walls.add(wall));
     }
     
-    // Генерация сущностей
-    function generateEntities() {
-        gameState.entities.clear();
-        
-        // Добавляем несколько врагов
-        addEntity(3, 3, ENTITY_TYPES.ENEMY);
-        addEntity(7, 7, ENTITY_TYPES.ENEMY);
-        addEntity(1, 8, ENTITY_TYPES.ENEMY);
-        
-        // Добавляем NPC
-        addEntity(5, 3, ENTITY_TYPES.NPC);
-        addEntity(8, 2, ENTITY_TYPES.NPC);
-        
-        // Добавляем деревья (случайно проходимые и непроходимые)
-        const treePositions = [
-            {x: 2, y: 4, passable: true},
-            {x: 4, y: 5, passable: false},
-            {x: 6, y: 3, passable: true},
-            {x: 3, y: 6, passable: false},
-            {x: 7, y: 5, passable: true},
-            {x: 8, y: 8, passable: false}
-        ];
-        
-        treePositions.forEach(pos => {
-            addEntity(pos.x, pos.y, ENTITY_TYPES.TREE, {passable: pos.passable});
-        });
-    }
-    
-    // Добавление сущности
-    function addEntity(x, y, type, options = {}) {
-        const key = `${x},${y}`;
-        const baseData = entityDescriptions[type];
-        
-        gameState.entities.set(key, {
-            type,
-            x,
-            y,
-            name: baseData.name,
-            description: baseData.description,
-            lookDescription: baseData.lookDescription,
-            passable: options.passable !== undefined ? options.passable : baseData.passable,
-            state: ENTITY_STATES.ALIVE,
-            health: baseData.health,
-            damage: baseData.damage,
-            dialogue: baseData.dialogue,
-            ...options
-        });
-    }
+        // Генерация сущностей
+        function generateEntities() {
+            gameState.entities.clear();
+            
+            // Добавляем несколько врагов с разными спрайтами
+            addEntity(3, 3, ENTITY_TYPES.ENEMY, {sprite: 'ENEMY'});
+            addEntity(7, 7, ENTITY_TYPES.ENEMY, {sprite: 'ENEMY2'});
+            addEntity(1, 8, ENTITY_TYPES.ENEMY, {sprite: 'ENEMY'});
+            
+            // Добавляем NPC с разными спрайтами
+            addEntity(5, 3, ENTITY_TYPES.NPC, {sprite: 'NPC'});
+            addEntity(8, 2, ENTITY_TYPES.NPC, {sprite: 'NPC2'});
+            
+            // Добавляем деревья
+            const treePositions = [
+                {x: 2, y: 4, passable: true, sprite: 'TREE'},
+                {x: 4, y: 5, passable: false, sprite: 'TREE'},
+                {x: 6, y: 3, passable: true, sprite: 'TREE'},
+                {x: 3, y: 6, passable: false, sprite: 'TREE'},
+                {x: 7, y: 5, passable: true, sprite: 'TREE'},
+                {x: 8, y: 8, passable: false, sprite: 'TREE'}
+            ];
+            
+            treePositions.forEach(pos => {
+                addEntity(pos.x, pos.y, ENTITY_TYPES.TREE, {
+                    passable: pos.passable,
+                    sprite: pos.sprite
+                });
+            });
+        }
+
+        // В функции addEntity():
+        function addEntity(x, y, type, options = {}) {
+            const key = `${x},${y}`;
+            const baseData = entityDescriptions[type];
+            
+            // Определяем спрайт по умолчанию если не указан
+            let defaultSprite;
+            switch(type) {
+                case ENTITY_TYPES.ENEMY:
+                    defaultSprite = Math.random() > 0.5 ? 'ENEMY' : 'ENEMY2';
+                    break;
+                case ENTITY_TYPES.NPC:
+                    defaultSprite = Math.random() > 0.5 ? 'NPC' : 'NPC2';
+                    break;
+                case ENTITY_TYPES.TREE:
+                    defaultSprite = 'TREE';
+                    break;
+                default:
+                    defaultSprite = 'DEFAULT';
+            }
+            
+            gameState.entities.set(key, {
+                type,
+                x,
+                y,
+                name: baseData.name,
+                description: baseData.description,
+                lookDescription: baseData.lookDescription,
+                passable: options.passable !== undefined ? options.passable : baseData.passable,
+                state: ENTITY_STATES.ALIVE,
+                health: baseData.health,
+                damage: baseData.damage,
+                dialogue: baseData.dialogue,
+                sprite: options.sprite || defaultSprite, // Сохраняем тип спрайта
+                ...options
+            });
+        }
     
     // Получение сущности в клетке
     function getEntityAt(x, y) {

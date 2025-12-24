@@ -1,11 +1,21 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
+
+    
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Классическая Gold Box RPG с 3D видом</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#87CEEB">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Gold Box RPG</title>
     <link rel="stylesheet" href="styles.css">
-    <script src="js/three.min.js"></script>
+    <link rel="apple-touch-icon" href="assets/icon.png">
+    <link rel="manifest" href="manifest.json">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
 </head>
 <body>
     <div id="game-container">
@@ -66,6 +76,41 @@
             Minimap.init();
             ThreeJSRenderer.init();
         });
+    </script>
+
+    <script>
+    // Регистрация Service Worker для PWA
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js')
+            .then(registration => {
+            console.log('ServiceWorker зарегистрирован');
+            })
+            .catch(error => {
+            console.log('Ошибка регистрации ServiceWorker:', error);
+            });
+        });
+    }
+    
+    // Предотвращение контекстного меню на мобильных
+    document.addEventListener('contextmenu', e => e.preventDefault());
+    
+    // Предотвращение масштабирования на iOS
+    document.addEventListener('gesturestart', e => e.preventDefault());
+    
+    // Инициализация игры при загрузке страницы
+    document.addEventListener('DOMContentLoaded', () => {
+        // Инициализируем модули в правильном порядке
+        Game.init();
+        Controls.init();
+        Minimap.init();
+        ThreeJSRenderer.init();
+        
+        // Уведомление об установке на iOS
+        if (window.navigator.standalone) {
+        console.log('Запущено как PWA на iOS');
+        }
+    });
     </script>
 </body>
 </html>
