@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Классическая Gold Box RPG с 3D видом</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="js/three.min.js"></script>
+</head>
+<body>
+    <div id="game-container">
+        <div id="game-header">
+            🏰 Классическая Gold Box RPG с 3D видом 🐉
+        </div>
+        
+        <div id="game-content">
+            <div id="main-view">
+                <div id="view-container">
+                    <div id="view-display">
+                        Вы стоите в каменном коридоре. Воздух сырой и холодный.
+                    </div>
+                    <div id="graphics-display">
+                        <!-- Three.js canvas будет создан здесь -->
+                    </div>
+                </div>
+                
+                <!-- Кнопки управления будут созданы через JS -->
+                <div id="controls-container"></div>
+            </div>
+            
+            <div id="side-panel">
+                <div id="mini-map-container"></div>
+                
+                <div id="game-info">
+                    <div class="info-title">Информация:</div>
+                    <div id="player-position">Позиция: X=2, Y=2</div>
+                    <div id="player-direction">Направление: Север</div>
+                    <div id="game-status">Статус: Исследование</div>
+                </div>
+                
+                <div id="game-log">
+                    <div class="log-title">Журнал событий:</div>
+                    <div id="log-entries">
+                        <div class="log-entry">Вы начали свое приключение в подземелье.</div>
+                        <div class="log-entry">Вы слышите эхо вдалеке.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Загружаем модули в правильном порядке -->
+    <script src="js/level.js"></script>
+    <script src="js/game.js"></script>
+    <script src="js/minimap.js"></script>
+    <script src="js/controls.js"></script>
+    <script src="js/threejs-renderer.js"></script>
+    <script src="js/firstperson.js"></script>
+    
+    <script>
+        // Инициализация игры при загрузке страницы
+        document.addEventListener('DOMContentLoaded', () => {
+            // Инициализируем модули в правильном порядке
+            Game.init();
+            Controls.init();
+            Minimap.init();
+            ThreeJSRenderer.init();
+        });
+    </script>
+</body>
+</html>

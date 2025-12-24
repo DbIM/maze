@@ -1,0 +1,392 @@
+/* Обновленные стили для светлой темы */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #e8f4f8; /* Светлый голубоватый фон */
+    color: #333344;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+#game-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 1100px; /* Немного шире */
+    background-color: #ffffff;
+    border: 2px solid #87CEEB; /* Небесно-голубая рамка */
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(135, 206, 235, 0.3);
+}
+
+#game-header {
+    background: linear-gradient(135deg, #87CEEB 0%, #4682B4 100%);
+    padding: 20px;
+    text-align: center;
+    border-bottom: 2px solid #4682B4;
+    font-size: 1.6em;
+    color: white;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+#game-content {
+    display: flex;
+    flex-wrap: wrap;
+    min-height: 700px;
+}
+
+#main-view {
+    flex: 3;
+    min-width: 450px;
+    padding: 25px;
+    background-color: #f5f9ff;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+#view-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 20px;
+}
+
+#view-display {
+    flex: 1;
+    background-color: #ffffff;
+    border: 2px solid #B0E2FF;
+    border-radius: 6px;
+    margin-bottom: 15px;
+    padding: 20px;
+    font-family: 'Courier New', monospace;
+    font-size: 1.2em;
+    line-height: 1.5;
+    color: #2c3e50;
+    overflow-y: auto;
+    min-height: 120px;
+    max-height: 180px;
+    box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);
+}
+
+#graphics-display {
+    flex: 3;
+    background-color: #87CEEB; /* Цвет неба как фон до загрузки */
+    border: 2px solid #4682B4;
+    border-radius: 6px;
+    overflow: hidden;
+    position: relative;
+    min-height: 350px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+#controls-container {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    gap: 10px;
+    height: 200px;
+    margin-top: 15px;
+}
+
+.control-btn {
+    background: linear-gradient(135deg, #4682B4 0%, #5F9EA0 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 12px 5px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.control-btn:hover {
+    background: linear-gradient(135deg, #5F9EA0 0%, #4682B4 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 8px rgba(0,0,0,0.15);
+}
+
+.control-btn:active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 3px rgba(0,0,0,0.1);
+}
+
+#btn-interact {
+    background: linear-gradient(135deg, #32CD32 0%, #228B22 100%);
+}
+
+#btn-interact:hover {
+    background: linear-gradient(135deg, #228B22 0%, #32CD32 100%);
+}
+
+#side-panel {
+    flex: 1;
+    min-width: 280px;
+    background-color: #f0f8ff;
+    padding: 25px;
+    border-left: 2px solid #87CEEB;
+}
+
+#mini-map-container {
+    background-color: #ffffff;
+    border: 2px solid #B0E2FF;
+    border-radius: 6px;
+    padding: 15px;
+    margin-bottom: 25px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+}
+
+#map-title {
+    text-align: center;
+    margin-bottom: 15px;
+    color: #4682B4;
+    font-size: 1.2em;
+    font-weight: bold;
+}
+
+#map-grid {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr); /* 10x10 */
+    grid-template-rows: repeat(10, 1fr);
+    gap: 2px;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+}
+
+.map-cell {
+    background-color: #e6f2ff;
+    border: 1px solid #cce0ff;
+    border-radius: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8em;
+    position: relative;
+    transition: all 0.2s;
+}
+
+.map-cell:hover {
+    transform: scale(1.1);
+    z-index: 10;
+    box-shadow: 0 0 5px rgba(0,0,0,0.2);
+}
+
+.player-here {
+    background: linear-gradient(135deg, #4682B4 0%, #87CEEB 100%);
+    color: white;
+    border-color: #4682B4;
+}
+
+.visited {
+    background-color: #d4ebff;
+    color: #666;
+}
+
+.wall {
+    background-color: #F5F5DC; /* Пастельный цвет стен */
+    color: #999;
+    font-weight: bold;
+}
+
+.direction-indicator {
+    font-size: 1.8em;
+    color: #ffff00;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+}
+
+/* Стили для сущностей на мини-карте */
+.map-cell.entity {
+    font-weight: bold;
+    border-width: 2px;
+}
+
+.map-cell.entity-enemy {
+    background: linear-gradient(135deg, #ff6b6b 0%, #c92a2a 100%);
+    color: white;
+    border-color: #c92a2a;
+}
+
+.map-cell.entity-npc {
+    background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
+    color: white;
+    border-color: #44a08d;
+}
+
+.map-cell.entity-tree {
+    background: linear-gradient(135deg, #82c91e 0%, #2b8a3e 100%);
+    color: white;
+    border-color: #2b8a3e;
+}
+
+#game-info {
+    background-color: #ffffff;
+    border: 2px solid #B0E2FF;
+    border-radius: 6px;
+    padding: 20px;
+    font-size: 1em;
+    line-height: 1.6;
+    margin-bottom: 20px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+}
+
+.info-title {
+    color: #4682B4;
+    margin-bottom: 12px;
+    font-size: 1.2em;
+    font-weight: bold;
+    border-bottom: 2px solid #B0E2FF;
+    padding-bottom: 5px;
+}
+
+#game-log {
+    background-color: #ffffff;
+    border: 2px solid #B0E2FF;
+    border-radius: 6px;
+    padding: 20px;
+    font-size: 0.95em;
+    line-height: 1.5;
+    max-height: 180px;
+    overflow-y: auto;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+}
+
+.log-title {
+    color: #4682B4;
+    margin-bottom: 12px;
+    font-size: 1.2em;
+    font-weight: bold;
+    border-bottom: 2px solid #B0E2FF;
+    padding-bottom: 5px;
+}
+
+.log-entry {
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px dashed #e0e0e0;
+    color: #555;
+}
+
+.log-entry:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+/* Стили для статистики */
+#player-position, #player-direction, #game-status {
+    padding: 3px 0;
+    color: #2c3e50;
+}
+
+#player-position:before, #player-direction:before, #game-status:before {
+    content: "• ";
+    color: #4682B4;
+    font-weight: bold;
+}
+
+@media (max-width: 900px) {
+    #game-content {
+        flex-direction: column;
+    }
+    
+    #side-panel {
+        border-left: none;
+        border-top: 2px solid #87CEEB;
+    }
+    
+    #controls-container {
+        height: 180px;
+    }
+    
+    #map-grid {
+        grid-template-columns: repeat(10, 1fr);
+        grid-template-rows: repeat(10, 1fr);
+    }
+}
+
+/* Добавь в конец styles.css */
+
+/* Стиль для подсветки нажатой кнопки */
+.control-btn.key-pressed {
+    transform: scale(0.95);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2) inset;
+    background: linear-gradient(135deg, #32CD32 0%, #228B22 100%) !important;
+}
+
+/* Анимация наведения для всех кнопок */
+.control-btn {
+    transition: all 0.15s ease;
+}
+
+/* Специальные стили для кнопок с подсказками клавиш */
+.control-btn div:first-child {
+    line-height: 1.3;
+}
+
+/* Для кнопки взаимодействия */
+#btn-interact {
+    font-size: 1em;
+    padding: 8px 5px;
+}
+
+/* Адаптивность для маленьких экранов */
+@media (max-width: 900px) {
+    .control-btn {
+        font-size: 0.9em;
+        padding: 8px 3px;
+    }
+    
+    #btn-interact {
+        font-size: 0.9em;
+    }
+    
+    .control-btn div:first-child {
+        font-size: 0.9em;
+    }
+    
+    .control-btn div:last-child {
+        font-size: 0.8em;
+    }
+}
+
+/* Для очень маленьких экранов */
+@media (max-width: 600px) {
+    #controls-container {
+        height: 160px;
+        gap: 6px;
+    }
+    
+    .control-btn {
+        font-size: 0.8em;
+        padding: 5px 2px;
+    }
+    
+    #btn-interact {
+        font-size: 0.8em;
+    }
+    
+    .control-btn div:first-child {
+        font-size: 0.8em;
+        margin-bottom: 2px;
+    }
+    
+    .control-btn div:last-child {
+        font-size: 0.7em;
+    }
+}
