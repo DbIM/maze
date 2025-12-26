@@ -7,7 +7,18 @@ const ThreeJSRenderer = (function() {
     let floorMesh, ceilingMesh;
     let textureLoader;
     let spriteTextures = {};
-    
+
+    let targetCameraRotation = 0;
+    const CAMERA_ROTATION_SPEED = 0.1;
+
+    // Плавное движение
+    let targetPosition = new THREE.Vector3();
+    let _isMoving = false;
+    const MOVEMENT_SPEED = 0.1; // Скорость движения (0.05 — медленно, 0.2 — быстро)
+    let _pendingMove = null;
+
+    let cachedWallTexture = null; // ✅ Добавьте сюда
+
     // Цвета
     const COLORS = {
         SKY: 0x87CEEB,
@@ -26,20 +37,22 @@ const ThreeJSRenderer = (function() {
         TREE: 'assets/sprites/tree.png',
         DEFAULT: 'assets/sprites/default.png' // Запасной спрайт
     };
-    
+
     function init() {
         if (initialized) return;
-        
+
         const container = document.getElementById('graphics-display');
-        
+
         // Создаем сцену
         scene = new THREE.Scene();
         scene.fog = new THREE.Fog(COLORS.SKY, 5, 25);
-        
+
         // Создаем камеру
         camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
-        camera.position.set(0, 1.6, 0);
-        
+
+        // Синхронизируем позицию камеры с позицией игрока
+        syncCameraWithPlayerPosition();
+
         // Создаем рендерер
         renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(container.clientWidth, container.clientHeight);
@@ -74,6 +87,21 @@ const ThreeJSRenderer = (function() {
         
         // Запускаем анимацию
         animate();
+    }
+
+    function syncCameraWithPlayerPosition() {
+        const cellSize = 3;
+        const level = Game.getLevel();
+        const state = level.getState();
+
+        camera.position.set(
+            state.playerX * cellSize,
+            1.6, // Высота камеры
+            state.playerY * cellSize
+        );
+
+        // Также сбрасываем targetPosition
+        targetPosition.copy(camera.position);
     }
     
     function loadSprites() {
@@ -329,48 +357,112 @@ const ThreeJSRenderer = (function() {
         camera.updateProjectionMatrix();
         renderer.setSize(container.clientWidth, container.clientHeight);
     }
-    
+
     function animate() {
         requestAnimationFrame(animate);
-        
-        // Анимация спрайтов (поворот к камере)
+
+        // === Плавный поворот ===
+        const angleDifference = targetCameraRotation - camera.rotation.y;
+        const normalizedDiff = THREE.MathUtils.euclideanModulo(angleDifference + Math.PI, Math.PI * 2) - Math.PI;
+
+        if (Math.abs(normalizedDiff) > 0.001) {
+            camera.rotation.y += normalizedDiff * CAMERA_ROTATION_SPEED;
+        } else {
+            camera.rotation.y = targetCameraRotation;
+        }
+
+        // === Плавное движение ===
+        if (_isMoving && _pendingMove) {
+            const moveDiff = targetPosition.clone().sub(camera.position);
+            const distance = moveDiff.length();
+
+            if (distance > 0.01) {
+                const step = moveDiff.normalize().multiplyScalar(Math.min(distance, MOVEMENT_SPEED));
+                camera.position.add(step);
+            } else {
+                // Движение завершено
+                camera.position.copy(targetPosition);
+
+                // Обновляем игровую логику ПОСЛЕ завершения анимации
+                const level = Game.getLevel();
+                const currentState = level.getState(); // Получаем состояние здесь
+
+                // Проверяем еще раз перед фактическим перемещением
+                if (level.isPassable(
+                    currentState.playerX + _pendingMove.dx,
+                    currentState.playerY + _pendingMove.dy
+                )) {
+                    level.movePlayer(_pendingMove.dx, _pendingMove.dy);
+                } else {
+                    console.log("Клетка стала непроходимой во время движения");
+                    // Возвращаем камеру на исходную позицию
+                    targetPosition.copy(camera.position);
+                    camera.position.copy(targetPosition);
+                }
+
+                // Сбрасываем флаги движения
+                _isMoving = false;
+                _pendingMove = null;
+
+                // Обновляем отображение
+                updateView();
+                Game.updateGameDisplay();
+            }
+        }
+
+        // === Анимация спрайтов ===
         entitySprites.forEach((sprite, key) => {
             if (!sprite.parent) return;
-            
-            // Всегда поворачиваем спрайт к камере (billboard effect)
             sprite.lookAt(camera.position);
-            
-            // Легкая пульсация для некоторых типов
+
             if (sprite.userData.type === 'enemy') {
                 const scale = 1 + Math.sin(Date.now() * 0.003) * 0.1;
                 sprite.scale.set(scale, scale, 1);
             } else if (sprite.userData.type === 'npc') {
-                // Легкое покачивание для NPC
                 sprite.position.y = 0.8 + Math.sin(Date.now() * 0.002) * 0.05;
             }
         });
-        
+
         renderer.render(scene, camera);
     }
-    
+
     function updateView() {
         if (!initialized) return;
-        
+
         // Очищаем старые стены и спрайты
         clearOldMeshes();
-        
+
         const state = Game.getLevel().getState();
-        
+
         // Устанавливаем направление камеры
         updateCameraDirection(state.direction);
-        
+
         // Создаем стены в видимой области
         createWalls(state);
-        
+
         // Добавляем спрайты сущностей в видимой области
         createEntitySprites(state);
     }
-    
+
+    function resetRenderer() {
+        // Очищаем все спрайты
+        entitySprites.forEach((sprite, key) => {
+            if (sprite.parent) {
+                scene.remove(sprite);
+            }
+        });
+        entitySprites.clear();
+
+        // Очищаем стены
+        clearOldMeshes();
+
+        // Синхронизируем камеру
+        syncCameraWithPlayerPosition();
+
+        // Обновляем вид
+        updateView();
+    }
+
     function clearOldMeshes() {
         // Удаляем все старые стены
         wallMeshes.forEach(mesh => {
@@ -379,22 +471,23 @@ const ThreeJSRenderer = (function() {
             }
         });
         wallMeshes = [];
-        
-        // Удаляем только спрайты сущностей, которые больше не видны
+
+        // Удаляем спрайты сущностей, которые находятся слишком далеко
+        const state = Game.getLevel().getState();
         const entities = Game.getLevel().getAllEntities();
         const visibleEntities = new Set();
-        
+
         // Собираем ключи видимых сущностей
         entities.forEach(entity => {
-            const dx = entity.x - Game.getLevel().getPlayerX();
-            const dz = entity.y - Game.getLevel().getPlayerY();
+            const dx = entity.x - state.playerX;
+            const dz = entity.y - state.playerY;
             const distance = Math.sqrt(dx*dx + dz*dz);
-            
+
             if (distance <= 5) {
                 visibleEntities.add(`${entity.x},${entity.y}`);
             }
         });
-        
+
         // Удаляем спрайты невидимых сущностей
         entitySprites.forEach((sprite, key) => {
             if (!visibleEntities.has(key) && sprite.parent) {
@@ -403,63 +496,79 @@ const ThreeJSRenderer = (function() {
             }
         });
     }
-    
+
     function updateCameraDirection(direction) {
+        let targetY = 0;
         switch(direction) {
-            case 0: camera.rotation.y = 0; break;
-            case 1: camera.rotation.y = -Math.PI / 2; break;
-            case 2: camera.rotation.y = Math.PI; break;
-            case 3: camera.rotation.y = Math.PI / 2; break;
+            case 0: targetY = 0; break;
+            case 1: targetY = -Math.PI / 2; break;
+            case 2: targetY = Math.PI; break;
+            case 3: targetY = Math.PI / 2; break;
+            default: targetY = 0;
         }
+        targetCameraRotation = targetY;
     }
-    
+
+    function getWallTexture() {
+        if (!cachedWallTexture) {
+            cachedWallTexture = createWallTexture();
+        }
+        return cachedWallTexture;
+    }
+
     function createWalls(state) {
         const cellSize = 3;
         const wallHeight = 4;
-        const wallTexture = createWallTexture();
-        
+        const wallTexture = getWallTexture();
+
         const viewDistance = 4;
         for (let x = -viewDistance; x <= viewDistance; x++) {
             for (let z = -viewDistance; z <= viewDistance; z++) {
                 const worldX = state.playerX + x;
                 const worldZ = state.playerY + z;
-                
+
+                // Пропускаем клетку, где стоит игрок
                 if (x === 0 && z === 0) continue;
-                
-                if (Game.getLevel().isWall(worldX, worldZ) || 
+
+                if (Game.getLevel().isWall(worldX, worldZ) ||
                     Game.getLevel().isOutOfBounds(worldX, worldZ)) {
-                    
+
                     if (isWallVisible(x, z, state.direction)) {
-                        createWallAt(x, z, cellSize, wallHeight, wallTexture);
+                        // Позиция стены В МИРОВЫХ КООРДИНАТАХ
+                        const wallWorldX = worldX * cellSize;
+                        const wallWorldZ = worldZ * cellSize;
+
+                        createWallAt(wallWorldX, wallWorldZ, cellSize, wallHeight, wallTexture);
                     }
                 }
             }
         }
     }
-    
-    function createWallAt(x, z, cellSize, wallHeight, wallTexture) {
+
+    function createWallAt(worldX, worldZ, cellSize, wallHeight, wallTexture) {
         const wallGeometry = new THREE.BoxGeometry(cellSize, wallHeight, cellSize);
-        const wallMaterial = new THREE.MeshLambertMaterial({ 
+        const wallMaterial = new THREE.MeshLambertMaterial({
             map: wallTexture,
             color: COLORS.WALL
         });
         const wall = new THREE.Mesh(wallGeometry, wallMaterial);
-        wall.position.set(x * cellSize, wallHeight/2 - 0.5, z * cellSize);
+        wall.position.set(worldX, wallHeight/2 - 0.5, worldZ);
         wall.castShadow = true;
         wall.receiveShadow = true;
         scene.add(wall);
         wallMeshes.push(wall);
-        
+
         const capGeometry = new THREE.BoxGeometry(cellSize * 1.05, 0.2, cellSize * 1.05);
-        const capMaterial = new THREE.MeshLambertMaterial({ 
+        const capMaterial = new THREE.MeshLambertMaterial({
             color: COLORS.WALL_DARK
         });
         const cap = new THREE.Mesh(capGeometry, capMaterial);
-        cap.position.set(x * cellSize, wallHeight - 0.4, z * cellSize);
+        cap.position.set(worldX, wallHeight - 0.4, worldZ);
         cap.castShadow = true;
         scene.add(cap);
         wallMeshes.push(cap);
     }
+
     
     function isWallVisible(x, z, direction) {
         const distance = Math.sqrt(x*x + z*z);
@@ -473,90 +582,125 @@ const ThreeJSRenderer = (function() {
         }
         return false;
     }
-    
-        function createEntitySprites(state) {
-            const entities = Game.getLevel().getAllEntities();
-            const cellSize = 3;
-            
-            entities.forEach(entity => {
-                // Проверяем, видна ли сущность
-                const dx = entity.x - state.playerX;
-                const dz = entity.y - state.playerY;
-                const distance = Math.sqrt(dx*dx + dz*dz);
-                
-                if (distance > 5) return;
-                
-                // Если спрайт уже создан для этой сущности - обновляем позицию
-                if (entitySprites.has(`${entity.x},${entity.y}`)) {
-                    const existingSprite = entitySprites.get(`${entity.x},${entity.y}`);
-                    // Обновляем позицию относительно игрока
-                    existingSprite.position.set(
-                        (entity.x - state.playerX) * cellSize,
-                        existingSprite.userData.baseHeight || 1.0,
-                        (entity.y - state.playerY) * cellSize
-                    );
-                    return;
-                }
-                
-                // Используем сохраненный тип спрайта из данных сущности
-                const spriteKey = entity.sprite || 'DEFAULT';
-                
-                // Если спрайт еще не загружен, используем заглушку
-                const texture = spriteTextures[spriteKey] || spriteTextures.DEFAULT;
-                if (!texture) return;
-                
-                // Создаем материал для спрайта
-                const material = new THREE.SpriteMaterial({ 
-                    map: texture,
-                    transparent: true,
-                    opacity: 0.9
-                });
-                
-                // Создаем спрайт
-                const sprite = new THREE.Sprite(material);
-                
-                // Размер спрайта
-                let spriteSize = 1.5;
-                let baseHeight = 1.0;
-                if (entity.type === state.ENTITY_TYPES.TREE) {
-                    spriteSize = 2.0;
-                    baseHeight = 1.5;
-                } else if (entity.type === state.ENTITY_TYPES.ENEMY) {
-                    spriteSize = 1.3;
-                    baseHeight = 0.8;
-                } else if (entity.type === state.ENTITY_TYPES.NPC) {
-                    spriteSize = 1.4;
-                    baseHeight = 0.9;
-                }
-                
-                sprite.scale.set(spriteSize, spriteSize, 1);
-                
-                // Позиционируем
-                sprite.position.set(
-                    (entity.x - state.playerX) * cellSize,
-                    baseHeight,
-                    (entity.y - state.playerY) * cellSize
+
+    function createEntitySprites(state) {
+        const entities = Game.getLevel().getAllEntities();
+        const cellSize = 3;
+
+        entities.forEach(entity => {
+            // Проверяем, видна ли сущность (расстояние от игрока)
+            const dx = entity.x - state.playerX;
+            const dz = entity.y - state.playerY;
+            const distance = Math.sqrt(dx*dx + dz*dz);
+
+            if (distance > 5) return;
+
+            const spriteKey = `${entity.x},${entity.y}`;
+
+            // Если спрайт уже существует - обновляем позицию в мировых координатах
+            if (entitySprites.has(spriteKey)) {
+                const existingSprite = entitySprites.get(spriteKey);
+                existingSprite.position.set(
+                    entity.x * cellSize, // Мировые координаты!
+                    existingSprite.userData.baseHeight || 1.0,
+                    entity.y * cellSize  // Мировые координаты!
                 );
-                
-                sprite.userData = { 
-                    type: entity.type, 
-                    entity: entity,
-                    spriteKey: spriteKey,
-                    baseHeight: baseHeight // Сохраняем базовую высоту для анимации
-                };
-                
-                scene.add(sprite);
-                entitySprites.set(`${entity.x},${entity.y}`, sprite);
+                return;
+            }
+
+            // Используем сохраненный тип спрайта из данных сущности
+            const textureKey = entity.sprite || 'DEFAULT';
+
+            // Если спрайт еще не загружен, используем заглушку
+            const texture = spriteTextures[textureKey] || spriteTextures.DEFAULT;
+            if (!texture) return;
+
+            // Создаем материал для спрайта
+            const material = new THREE.SpriteMaterial({
+                map: texture,
+                transparent: true,
+                opacity: 0.9
             });
+
+            // Создаем спрайт
+            const sprite = new THREE.Sprite(material);
+
+            // Размер спрайта
+            let spriteSize = 1.5;
+            let baseHeight = 1.0;
+            if (entity.type === state.ENTITY_TYPES.TREE) {
+                spriteSize = 2.0;
+                baseHeight = 1.5;
+            } else if (entity.type === state.ENTITY_TYPES.ENEMY) {
+                spriteSize = 1.3;
+                baseHeight = 0.8;
+            } else if (entity.type === state.ENTITY_TYPES.NPC) {
+                spriteSize = 1.4;
+                baseHeight = 0.9;
+            }
+
+            sprite.scale.set(spriteSize, spriteSize, 1);
+
+            // Позиция в МИРОВЫХ КООРДИНАТАХ
+            sprite.position.set(
+                entity.x * cellSize,
+                baseHeight,
+                entity.y * cellSize
+            );
+
+            sprite.userData = {
+                type: entity.type,
+                entity: entity,
+                spriteKey: textureKey,
+                baseHeight: baseHeight
+            };
+
+            scene.add(sprite);
+            entitySprites.set(spriteKey, sprite);
+        });
+    }
+
+    function startMovement(dx, dy) {
+        if (_isMoving) return;
+
+        const cellSize = 3;
+        const level = Game.getLevel();
+        const state = level.getState();
+
+        // Проверяем, можно ли переместиться (включая сущности)
+        const newX = state.playerX + dx;
+        const newY = state.playerY + dy;
+
+        console.log(`Попытка движения: (${state.playerX},${state.playerY}) + (${dx},${dy}) = (${newX},${newY})`);
+
+        // Проверяем проходимость клетки через метод уровня
+        if (!level.isPassable(newX, newY)) {
+            console.log("Нельзя двигаться - препятствие");
+            return; // Нельзя двигаться
         }
-    
+
+        // Плавное движение камеры
+        _isMoving = true;
+        _pendingMove = { dx, dy };
+
+        // Устанавливаем целевые координаты
+        targetPosition.x = camera.position.x + dx * cellSize;
+        targetPosition.y = camera.position.y; // Сохраняем высоту
+        targetPosition.z = camera.position.z + dy * cellSize;
+
+        console.log(`Целевая позиция камеры: (${targetPosition.x.toFixed(2)}, ${targetPosition.z.toFixed(2)})`);
+        console.log(`Текущая позиция камеры: (${camera.position.x.toFixed(2)}, ${camera.position.z.toFixed(2)})`);
+
+        // НЕ вызываем level.movePlayer() здесь - это будет сделано после анимации
+    }
+
     return {
         init,
         updateView,
-        // Метод для перезагрузки спрайтов (если нужно менять на лету)
-        reloadSprites: function() {
-            spriteTextures = {};
-            loadSprites();
+        startMovement,
+        resetRenderer, // Добавьте эту строку
+        get isMoving() {
+            return _isMoving;
         }
     };
 })();

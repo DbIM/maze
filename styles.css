@@ -12,7 +12,7 @@ body {
     color: #333344;
     display: flex;
     justify-content: center;
-    align-items: flex-start; /* Изменено для мобильных */
+    align-items: flex-start;
     min-height: 100vh;
     padding: 10px;
     overflow-x: hidden;
@@ -84,7 +84,7 @@ body {
     border-radius: 8px;
     overflow: hidden;
     position: relative;
-    height: 40vh; /* Фиксированная высота для мобильных */
+    height: 40vh;
     min-height: 250px;
     max-height: 400px;
     box-shadow: 0 3px 10px rgba(0,0,0,0.1);
@@ -140,7 +140,7 @@ body {
     position: relative;
 }
 
-/* Управление для мобильных */
+/* Управление для мобильных - ТОЛЬКО СТРЕЛКИ */
 #controls-container {
     order: 3;
     display: grid;
@@ -158,19 +158,19 @@ body {
     color: white;
     border: none;
     border-radius: 10px;
-    font-size: clamp(0.9em, 3vw, 1em);
-    font-weight: 600;
+    font-size: 2em !important; /* Увеличенные стрелки */
+    font-weight: bold;
     cursor: pointer;
     transition: all 0.15s;
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
     text-align: center;
-    padding: 12px 5px;
+    padding: 0;
     min-height: 60px;
     touch-action: manipulation;
     user-select: none;
+    overflow: hidden;
 }
 
 .control-btn:active {
@@ -181,6 +181,21 @@ body {
 
 .control-btn:focus {
     outline: 3px solid rgba(135, 206, 235, 0.5);
+}
+
+/* Стили для подсветки кнопок */
+.control-btn.key-pressed {
+    transform: scale(0.95);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2) inset;
+    background: linear-gradient(135deg, #32CD32 0%, #228B22 100%) !important;
+}
+
+#btn-interact {
+    background: linear-gradient(135deg, #32CD32 0%, #228B22 100%);
+}
+
+#btn-interact:active {
+    background: linear-gradient(135deg, #228B22 0%, #32CD32 100%);
 }
 
 /* Информация и лог компактные */
@@ -266,44 +281,29 @@ body {
     text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
 }
 
-/* Стили для подсветки кнопок */
-.control-btn.key-pressed {
-    transform: scale(0.95);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2) inset;
-    background: linear-gradient(135deg, #32CD32 0%, #228B22 100%) !important;
-}
-
-#btn-interact {
-    background: linear-gradient(135deg, #32CD32 0%, #228B22 100%);
-}
-
-#btn-interact:active {
-    background: linear-gradient(135deg, #228B22 0%, #32CD32 100%);
-}
-
 /* Адаптация для разных размеров экрана */
 @media (min-width: 768px) {
     body {
         padding: 20px;
         align-items: center;
     }
-    
+
     #game-container {
         max-width: 900px;
     }
-    
+
     #game-content {
         flex-direction: row;
         min-height: 600px;
     }
-    
+
     #main-view {
         order: 1;
         flex: 3;
         min-width: 400px;
         padding: 20px;
     }
-    
+
     #side-panel {
         order: 2;
         flex: 1;
@@ -311,20 +311,25 @@ body {
         border-top: none;
         border-left: 2px solid #87CEEB;
     }
-    
+
     #controls-container {
         order: initial;
         margin-top: 15px;
         height: 180px;
     }
-    
+
     #graphics-display {
         height: auto;
         min-height: 300px;
     }
-    
+
     #map-grid {
         max-width: none;
+    }
+
+    .control-btn {
+        font-size: 2.5em !important; /* Еще больше на десктопе */
+        min-height: 70px;
     }
 }
 
@@ -332,18 +337,22 @@ body {
     #game-container {
         max-width: 1100px;
     }
-    
+
     #game-content {
         min-height: 700px;
     }
-    
+
     #controls-container {
         height: 200px;
     }
-    
+
     .control-btn {
-        min-height: 70px;
-        font-size: 1em;
+        min-height: 80px;
+        font-size: 3em !important; /* Максимальный размер стрелок */
+    }
+
+    #btn-interact::before {
+        font-size: 2em;
     }
 }
 
@@ -353,19 +362,18 @@ body {
         height: 35vh;
         min-height: 200px;
     }
-    
+
     #controls-container {
         grid-template-rows: repeat(2, auto);
         gap: 6px;
         padding: 10px;
     }
-    
+
     .control-btn {
         min-height: 50px;
-        padding: 8px 3px;
-        font-size: 0.85em;
+        font-size: 1.8em !important;
     }
-    
+
     #game-log {
         max-height: 100px;
     }
@@ -377,30 +385,29 @@ body {
         flex-direction: row !important;
         min-height: 400px;
     }
-    
+
     #graphics-display {
         height: 250px;
         min-height: auto;
     }
-    
+
     #view-display {
         max-height: 80px;
         min-height: 60px;
     }
-    
+
     #controls-container {
         grid-template-columns: repeat(3, 1fr);
         grid-template-rows: repeat(2, auto);
         height: 140px;
         gap: 5px;
     }
-    
+
     .control-btn {
         min-height: 45px;
-        padding: 6px 2px;
-        font-size: 0.8em;
+        font-size: 1.5em !important;
     }
-    
+
     #game-log {
         max-height: 80px;
     }
@@ -411,17 +418,16 @@ body {
     #controls-container {
         gap: 4px;
     }
-    
+
     .control-btn {
-        padding: 6px 2px;
-        font-size: 0.8em;
+        font-size: 1.6em !important;
         min-height: 50px;
     }
-    
+
     #map-grid {
         gap: 0.5px;
     }
-    
+
     .map-cell {
         font-size: 0.6em;
     }
@@ -433,38 +439,42 @@ body {
         background-color: #1a1a2a;
         color: #e0e0ff;
     }
-    
+
     #game-container {
         background-color: #2a2a3a;
         border-color: #4a4aff;
     }
-    
+
     #game-header {
         background: linear-gradient(135deg, #4a4aff 0%, #2a2a7a 100%);
         border-color: #2a2a7a;
     }
-    
+
     #main-view, #side-panel {
         background-color: #2a2a3a;
     }
-    
+
     #view-display, #game-info, #game-log, #mini-map-container {
         background-color: #1a1a2a;
         border-color: #4a4a7a;
         color: #e0e0ff;
     }
-    
+
     .map-cell {
         background-color: #2a2a4a;
         border-color: #3a3a6a;
     }
-    
+
     .control-btn {
         background: linear-gradient(135deg, #4a4aff 0%, #3a3a9a 100%);
     }
-    
+
     .info-title, .log-title {
         color: #a0a0ff;
         border-color: #4a4a7a;
+    }
+
+    #btn-interact {
+        background: linear-gradient(135deg, #32CD32 0%, #228B22 100%);
     }
 }
