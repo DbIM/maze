@@ -45,7 +45,7 @@ const ThreeJSRenderer = (function() {
 
         // Создаем сцену
         scene = new THREE.Scene();
-        scene.fog = new THREE.Fog(COLORS.SKY, 5, 25);
+        scene.fog = new THREE.Fog(COLORS.SKY, 8, 15); // Начало: 8, конец: 15
 
         // Создаем камеру
         camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
@@ -540,7 +540,7 @@ const ThreeJSRenderer = (function() {
         const wallTexture = getWallTexture();
 
         // ⭐ Увеличиваем расстояние просмотра с 4 до 5
-        const viewDistance = 5;
+        const viewDistance = 7;
         for (let x = -viewDistance; x <= viewDistance; x++) {
             for (let z = -viewDistance; z <= viewDistance; z++) {
                 const worldX = state.playerX + x;
@@ -592,7 +592,7 @@ const ThreeJSRenderer = (function() {
     function isWallVisible(x, z, direction) {
         const distance = Math.sqrt(x*x + z*z);
         // ⭐ Увеличиваем дальность с 4 до 5.5 (чуть больше, чем у сущностей)
-        if (distance > 5.5) return false;
+        if (distance > 7) return false;
 
         // ⭐ Расширяем углы обзора
         switch(direction) {
