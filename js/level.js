@@ -78,33 +78,45 @@ const Level = (function() {
         gameState.visitedCells.add(`${gameState.playerX},${gameState.playerY}`);
         return gameState;
     }
-    
-    // Генерация стен
-    function generateWalls() {
+
+// Инициализация уровня
+    function init() {
+        // Очищаем все
         gameState.walls.clear();
-        
-        // Внешние стены по периметру
-        for (let x = 0; x < MAP_SIZE; x++) {
-            gameState.walls.add(`${x},0`);
-            gameState.walls.add(`${x},${MAP_SIZE-1}`);
-        }
-        for (let y = 0; y < MAP_SIZE; y++) {
-            gameState.walls.add(`0,${y}`);
-            gameState.walls.add(`${MAP_SIZE-1},${y}`);
-        }
-        
-        // Лабиринт из стен
-        const mazeWalls = [
-            "2,2", "3,2", "4,2", "5,2",
-            
-            "2,7", "3,7", "4,7", "5,7", "6,7",
-            "8,6", "8,7", "8,8",
-            "1,5", "2,5", "3,5",
-            "5,4", "6,4", "7,4",
-            "4,8", "5,8", "6,8"
+        gameState.entities.clear();
+        gameState.visitedCells.clear();
+
+        // Загружаем стены из вашего уровня
+        const defaultWalls = [
+            "0,0", "0,9", "1,0", "1,9", "2,0", "2,9", "3,0", "3,9",
+            "4,0", "4,9", "5,0", "5,9", "6,0", "6,9", "7,0", "7,9",
+            "8,0", "8,9", "9,0", "9,9", "0,1", "9,1", "0,2", "9,2",
+            "0,3", "9,3", "0,4", "9,4", "0,5", "9,5", "0,6", "9,6",
+            "0,7", "9,7", "0,8", "9,8"
         ];
-        
-        mazeWalls.forEach(wall => gameState.walls.add(wall));
+
+        defaultWalls.forEach(wall => {
+            gameState.walls.add(wall);
+        });
+
+        // Загружаем сущности
+        addEntity(2, 2, ENTITY_TYPES.TREE, {passable: false, sprite: 'TREE'});
+        addEntity(3, 2, ENTITY_TYPES.TREE, {passable: false, sprite: 'TREE'});
+        addEntity(4, 2, ENTITY_TYPES.TREE, {passable: false, sprite: 'TREE'});
+        addEntity(2, 3, ENTITY_TYPES.TREE, {passable: false, sprite: 'TREE'});
+        addEntity(2, 4, ENTITY_TYPES.TREE, {passable: false, sprite: 'TREE'});
+
+        addEntity(7, 3, ENTITY_TYPES.NPC, {passable: false, sprite: 'NPC2', dialogue: "ПРИВЕТ, путник! Я заблудился в этих подземельях..."});
+        addEntity(7, 7, ENTITY_TYPES.ENEMY, {passable: false, sprite: 'ENEMY', health: 10, damage: 2});
+        addEntity(3, 3, ENTITY_TYPES.NPC, {passable: false, sprite: 'NPC', dialogue: "ПРИВЕТ, путник! Я заблудился в этих подземельях..."});
+
+        // Игрок в центре
+        gameState.playerX = 5;
+        gameState.playerY = 5;
+        gameState.direction = 0;
+        gameState.visitedCells.add(`${gameState.playerX},${gameState.playerY}`);
+
+        return gameState;
     }
     
         // Генерация сущностей
@@ -359,6 +371,33 @@ const Level = (function() {
         removeEntity,
         getAllEntities,
         interactWithEntityAhead,
+
+        addEntity: (x, y, type, options) => addEntity(x, y, type, options),
+        removeEntity: (x, y) => removeEntity(x, y),
+        getWallsSet: () => gameState.walls,
+        setPlayerPosition: (x, y, dir) => {
+            gameState.playerX = x;
+            gameState.playerY = y;
+            gameState.direction = dir || 0;
+        },
+
+        // Метод для полной перезагрузки уровня
+        resetLevel: () => {
+            gameState.walls.clear();
+            gameState.entities.clear();
+            gameState.visitedCells.clear();
+            gameState.gameLog = ["Уровень перезагружен."];
+
+            // Внешние стены
+            for (let x = 0; x < MAP_SIZE; x++) {
+                gameState.walls.add(`${x},0`);
+                gameState.walls.add(`${x},${MAP_SIZE-1}`);
+            }
+            for (let y = 0; y < MAP_SIZE; y++) {
+                gameState.walls.add(`0,${y}`);
+                gameState.walls.add(`${MAP_SIZE-1},${y}`);
+            }
+        },
         
         // Геттеры для удобства
         getPlayerX: () => gameState.playerX,

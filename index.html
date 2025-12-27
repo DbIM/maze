@@ -21,8 +21,8 @@
     <div id="game-container">
         <div id="game-header">
             🏰 Классическая Gold Box RPG с 3D видом 🐉
+            <button id="toggle-editor" class="editor-btn" title="Открыть/закрыть редактор уровня">🛠️ Редактор</button>
         </div>
-        
         <div id="game-content">
             <div id="main-view">
                 <div id="view-container">
@@ -66,7 +66,9 @@
     <script src="js/controls.js"></script>
     <script src="js/threejs-renderer.js"></script>
     <script src="js/firstperson.js"></script>
-    
+    <script src="js/LevelEditor.js"></script>
+
+
     <script>
         // Инициализация игры при загрузке страницы
         document.addEventListener('DOMContentLoaded', () => {
@@ -75,42 +77,24 @@
             Controls.init();
             Minimap.init();
             ThreeJSRenderer.init();
-        });
-    </script>
 
-    <script>
-    // Регистрация Service Worker для PWA
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./service-worker.js')
-            .then(registration => {
-            console.log('ServiceWorker зарегистрирован');
-            })
-            .catch(error => {
-            console.log('Ошибка регистрации ServiceWorker:', error);
-            });
+            // Инициализируем редактор уровня
+            if (typeof LevelEditor !== 'undefined') {
+                LevelEditor.init();
+                console.log('LevelEditor инициализирован');
+
+                // Добавляем обработчик для кнопки
+                const editorBtn = document.getElementById('toggle-editor');
+                if (editorBtn) {
+                    editorBtn.addEventListener('click', () => {
+                        LevelEditor.toggleEditor();
+                    });
+                    console.log('Обработчик кнопки редактора добавлен');
+                }
+            } else {
+                console.error('LevelEditor не найден!');
+            }
         });
-    }
-    
-    // Предотвращение контекстного меню на мобильных
-    document.addEventListener('contextmenu', e => e.preventDefault());
-    
-    // Предотвращение масштабирования на iOS
-    document.addEventListener('gesturestart', e => e.preventDefault());
-    
-    // Инициализация игры при загрузке страницы
-    document.addEventListener('DOMContentLoaded', () => {
-        // Инициализируем модули в правильном порядке
-        Game.init();
-        Controls.init();
-        Minimap.init();
-        ThreeJSRenderer.init();
-        
-        // Уведомление об установке на iOS
-        if (window.navigator.standalone) {
-        console.log('Запущено как PWA на iOS');
-        }
-    });
     </script>
 </body>
 </html>

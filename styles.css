@@ -477,4 +477,45 @@ body {
     #btn-interact {
         background: linear-gradient(135deg, #32CD32 0%, #228B22 100%);
     }
+
+    /* Стили для кнопки редактора */
+    .editor-btn {
+        background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+        color: white;
+        border: none;
+        padding: 10px 15px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 14px;
+        font-weight: bold;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+        margin-left: 10px;
+    }
+
+    .editor-btn:hover {
+        background: linear-gradient(135deg, #2575fc 0%, #6a11cb 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 8px rgba(0,0,0,0.2);
+    }
+
+    .editor-btn:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    /* Для мобильных устройств */
+    @media (max-width: 768px) {
+        .editor-btn {
+            padding: 12px 18px;
+            font-size: 16px;
+            margin: 5px;
+        }
+
+        #game-header .editor-btn {
+            float: right;
+            margin-top: 5px;
+        }
+    }
 }

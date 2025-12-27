@@ -415,11 +415,29 @@ const ThreeJSRenderer = (function() {
             if (!sprite.parent) return;
             sprite.lookAt(camera.position);
 
+            const floorHeight = -0.5;
+            const heightAboveFloor = sprite.userData.heightAboveFloor || 1.0;
+
             if (sprite.userData.type === 'enemy') {
                 const scale = 1 + Math.sin(Date.now() * 0.003) * 0.1;
-                sprite.scale.set(scale, scale, 1);
+                sprite.scale.set(4, 4, 4);
+                sprite.position.y = floorHeight + 1.7;
+                // Враг стоит на месте, только пульсирует
             } else if (sprite.userData.type === 'npc') {
-                sprite.position.y = 0.8 + Math.sin(Date.now() * 0.002) * 0.05;
+                if (sprite.userData.entity.sprite === 'NPC2') {
+                    // NPC2 — парит в воздухе
+                    sprite.scale.set(2, 2, 2);
+                    const float = Math.sin(Date.now() * 0.002) * 0.3;
+                    sprite.position.y = floorHeight + 1.5 + float;
+                } else {
+                    // NPC1 — лёгкое дыхание на своей высоте
+                    sprite.scale.set(3, 3, 3);
+                    sprite.position.y = floorHeight + 1.5;
+                }
+            } else if (sprite.userData.type === 'tree') {
+                // Дерево — лёгкое покачивание на своей высоте
+                sprite.scale.set(4, 4, 4);
+                sprite.position.y = floorHeight + 2;
             }
         });
 
@@ -521,7 +539,8 @@ const ThreeJSRenderer = (function() {
         const wallHeight = 4;
         const wallTexture = getWallTexture();
 
-        const viewDistance = 4;
+        // ⭐ Увеличиваем расстояние просмотра с 4 до 5
+        const viewDistance = 5;
         for (let x = -viewDistance; x <= viewDistance; x++) {
             for (let z = -viewDistance; z <= viewDistance; z++) {
                 const worldX = state.playerX + x;
@@ -569,16 +588,22 @@ const ThreeJSRenderer = (function() {
         wallMeshes.push(cap);
     }
 
-    
+
     function isWallVisible(x, z, direction) {
         const distance = Math.sqrt(x*x + z*z);
-        if (distance > 4) return false;
-        
+        // ⭐ Увеличиваем дальность с 4 до 5.5 (чуть больше, чем у сущностей)
+        if (distance > 5.5) return false;
+
+        // ⭐ Расширяем углы обзора
         switch(direction) {
-            case 0: return z <= 1 && Math.abs(x) <= 2;
-            case 1: return x >= -1 && Math.abs(z) <= 2;
-            case 2: return z >= -1 && Math.abs(x) <= 2;
-            case 3: return x <= 1 && Math.abs(z) <= 2;
+            case 0: // Смотрим на север
+                return z <= 2 && Math.abs(x) <= 3; // Видим 2 клетки вперед и 3 в стороны
+            case 1: // Смотрим на восток
+                return x >= -2 && Math.abs(z) <= 3;
+            case 2: // Смотрим на юг
+                return z >= -2 && Math.abs(x) <= 3;
+            case 3: // Смотрим на запад
+                return x <= 2 && Math.abs(z) <= 3;
         }
         return false;
     }
@@ -586,6 +611,9 @@ const ThreeJSRenderer = (function() {
     function createEntitySprites(state) {
         const entities = Game.getLevel().getAllEntities();
         const cellSize = 3;
+
+        // Высота пола (пол находится на y = -0.5)
+        const FLOOR_HEIGHT = -0.5;
 
         entities.forEach(entity => {
             // Проверяем, видна ли сущность (расстояние от игрока)
@@ -600,10 +628,11 @@ const ThreeJSRenderer = (function() {
             // Если спрайт уже существует - обновляем позицию в мировых координатах
             if (entitySprites.has(spriteKey)) {
                 const existingSprite = entitySprites.get(spriteKey);
+                // ⭐ Обновляем высоту относительно пола ⭐
                 existingSprite.position.set(
-                    entity.x * cellSize, // Мировые координаты!
-                    existingSprite.userData.baseHeight || 1.0,
-                    entity.y * cellSize  // Мировые координаты!
+                    entity.x * cellSize,
+                    FLOOR_HEIGHT + existingSprite.userData.heightAboveFloor || 0,
+                    entity.y * cellSize
                 );
                 return;
             }
@@ -625,34 +654,43 @@ const ThreeJSRenderer = (function() {
             // Создаем спрайт
             const sprite = new THREE.Sprite(material);
 
-            // Размер спрайта
+            // ⭐ ВЫСОТА ОТНОСИТЕЛЬНО ПОЛА ⭐
             let spriteSize = 1.5;
-            let baseHeight = 1.0;
+            let heightAboveFloor = 0; // Насколько выше пола стоит спрайт
+
             if (entity.type === state.ENTITY_TYPES.TREE) {
                 spriteSize = 2.0;
-                baseHeight = 1.5;
+                heightAboveFloor = 2.0; // Дерево высотой 2 метра от пола
             } else if (entity.type === state.ENTITY_TYPES.ENEMY) {
                 spriteSize = 1.3;
-                baseHeight = 0.8;
+                heightAboveFloor = 1.3; // Враг высотой 1.3 метра
             } else if (entity.type === state.ENTITY_TYPES.NPC) {
-                spriteSize = 1.4;
-                baseHeight = 0.9;
+                if (entity.sprite === 'NPC') {
+                    // NPC1 — стоит на земле
+                    spriteSize = 1.4;
+                    heightAboveFloor = 1.4; // NPC высотой 1.4 метра
+                } else if (entity.sprite === 'NPC2') {
+                    // NPC2 — парит в воздухе
+                    spriteSize = 1.4;
+                    heightAboveFloor = 2.2; // Парит выше
+                }
             }
 
             sprite.scale.set(spriteSize, spriteSize, 1);
 
-            // Позиция в МИРОВЫХ КООРДИНАТАХ
+            // ⭐ Позиция В МИРОВЫХ КООРДИНАТАХ с правильной высотой ⭐
             sprite.position.set(
                 entity.x * cellSize,
-                baseHeight,
+                FLOOR_HEIGHT + heightAboveFloor, // Пол + высота спрайта
                 entity.y * cellSize
             );
 
             sprite.userData = {
-                type: entity.type,
+                type: entity.type === state.ENTITY_TYPES.TREE ? 'tree' : entity.type,
                 entity: entity,
                 spriteKey: textureKey,
-                baseHeight: baseHeight
+                heightAboveFloor: heightAboveFloor, // Сохраняем высоту над полом
+                baseHeight: FLOOR_HEIGHT + heightAboveFloor // Общая высота
             };
 
             scene.add(sprite);
